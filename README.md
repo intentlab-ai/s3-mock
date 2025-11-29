@@ -37,6 +37,51 @@ defer closeFn(context.Background())
 - Go 1.24.2 or later
 - AWS SDK Go v2
 
+## API Coverage
+
+The mock implement common API methods for creating, retrieving and deleting buckets and objects. It supports regular and directory buckets (multi-part object keys, e.g. '/path/to/object').
+
+Important implementation gaps:
+- versioned buckets
+- multipart uploads
+
+This project does not attempt to implement:
+- Policies
+- ACL
+- Life cycle management
+- Tagging
+- Locks
+
+The following table documents the current implementation status of S3 API operations within the scope of this project:
+
+| Operation | Status | Notes |
+|-----------|--------|-------|
+| **Bucket Operations** |
+| `CreateBucket` | ✅ Implemented | Basic bucket creation with duplicate detection |
+| `DeleteBucket` | ✅ Implemented | Deletes empty buckets, returns BucketNotEmpty if bucket contains objects |
+| `ListBuckets` | ✅  Implemented | Supports prefix, maxKeys, continuationToken, startAfter parameters |
+| `HeadBucket` | ❌ Not Implemented | - |
+| **Object Operations** |
+| `PutObject` | ✅ Implemented | Supports conditional headers (If-Match, If-None-Match), SHA256 checksum storage |
+| `GetObject` | ✅ Implemented | Supports conditional headers (If-Match, If-None-Match) |
+| `HeadObject` | ✅ Implemented | Returns object metadata without body |
+| `DeleteObject` | ✅ Implemented | Supports conditional headers (If-Match) |
+| `CopyObject` | ❌ Not Implemented | - |
+| `DeleteObjects` | ❌ Not Implemented | Batch delete operation |
+| `GetObjectAttributes` | ✅ Implemented | Supports ETag, ObjectSize, Checksum (SHA256), StorageClass |
+| **Listing Operations** |
+| `ListObjectsV2` | ✅ Implemented | Supports prefix, maxKeys, continuationToken, startAfter parameters |
+| `ListObjects` | ✅ Implemented | Legacy ListObjects v1 API - supports prefix, maxKeys, marker parameters |
+| `ListObjectVersions` | ❌ Not Implemented | - |
+| **Multipart Upload Operations** |
+| `CreateMultipartUpload` | ❌ Not Implemented | - |
+| `UploadPart` | ❌ Not Implemented | - |
+| `UploadPartCopy` | ❌ Not Implemented | - |
+| `CompleteMultipartUpload` | ❌ Not Implemented | - |
+| `AbortMultipartUpload` | ❌ Not Implemented | - |
+| `ListMultipartUploads` | ❌ Not Implemented | - |
+| `ListParts` | ❌ Not Implemented | - |
+
 ## License
 
 See LICENSE file for details.
