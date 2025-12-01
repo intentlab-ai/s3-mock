@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/http"
 	"testing"
+	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
@@ -1871,6 +1872,128 @@ func TestGetObjectIfMatchNonExistent(t *testing.T) {
 		IfMatch: aws.String(`"some-etag"`),
 	})
 	assertS3Error(t, err, "NoSuchKey", http.StatusNotFound)
+}
+
+func TestGetObjectIfModified(t *testing.T) {
+	bucket := "test-bucket"
+	key := "test.txt"
+	content := []byte("original content")
+	changed := []byte("modified content")
+
+	client, close, err := New()
+	if err != nil {
+		t.Fatalf("setup %v", err)
+	}
+	t.Cleanup(func() {
+		_ = close(t.Context())
+	})
+
+	// Create bucket and object
+	_, err = client.CreateBucket(t.Context(), &s3.CreateBucketInput{
+		Bucket: &bucket,
+	})
+	require.NoError(t, err, "CreateBucket should succeed")
+
+	_, err = client.PutObject(t.Context(), &s3.PutObjectInput{
+		Bucket: &bucket,
+		Key:    &key,
+		Body:   bytes.NewReader(content),
+	})
+	require.NoError(t, err, "PutObject should succeed")
+
+	// Get object
+	getResp, err := client.GetObject(t.Context(), &s3.GetObjectInput{
+		Bucket: &bucket,
+		Key:    &key,
+	})
+	require.NoError(t, err, "GetObject should succeed")
+	defer getResp.Body.Close()
+
+	// Get if modified, should fail
+	_, err = client.GetObject(t.Context(), &s3.GetObjectInput{
+		Bucket:          &bucket,
+		Key:             &key,
+		IfModifiedSince: getResp.LastModified,
+	})
+	assertS3Error(t, err, "NotModified", http.StatusNotModified)
+
+	// update object
+	time.Sleep(time.Second)
+	_, err = client.PutObject(t.Context(), &s3.PutObjectInput{
+		Bucket: &bucket,
+		Key:    &key,
+		Body:   bytes.NewReader(changed),
+	})
+	require.NoError(t, err, "PutObject should succeed")
+
+	// Get if modified should success
+	_, err = client.GetObject(t.Context(), &s3.GetObjectInput{
+		Bucket:          &bucket,
+		Key:             &key,
+		IfModifiedSince: getResp.LastModified,
+	})
+	require.NoError(t, err, "GetObject if modified should succeed")
+}
+
+func TestGetObjectIfUnmodified(t *testing.T) {
+	bucket := "test-bucket"
+	key := "test.txt"
+	content := []byte("original content")
+	changed := []byte("modified content")
+
+	client, close, err := New()
+	if err != nil {
+		t.Fatalf("setup %v", err)
+	}
+	t.Cleanup(func() {
+		_ = close(t.Context())
+	})
+
+	// Create bucket and object
+	_, err = client.CreateBucket(t.Context(), &s3.CreateBucketInput{
+		Bucket: &bucket,
+	})
+	require.NoError(t, err, "CreateBucket should succeed")
+
+	_, err = client.PutObject(t.Context(), &s3.PutObjectInput{
+		Bucket: &bucket,
+		Key:    &key,
+		Body:   bytes.NewReader(content),
+	})
+	require.NoError(t, err, "PutObject should succeed")
+
+	// Get object
+	getResp, err := client.GetObject(t.Context(), &s3.GetObjectInput{
+		Bucket: &bucket,
+		Key:    &key,
+	})
+	require.NoError(t, err, "GetObject should succeed")
+	defer getResp.Body.Close()
+
+	// Get if unmodified, should fail
+	_, err = client.GetObject(t.Context(), &s3.GetObjectInput{
+		Bucket:            &bucket,
+		Key:               &key,
+		IfUnmodifiedSince: getResp.LastModified,
+	})
+	require.NoError(t, err, "GetObject if unmodified should succeed")
+
+	// update object
+	time.Sleep(time.Second)
+	_, err = client.PutObject(t.Context(), &s3.PutObjectInput{
+		Bucket: &bucket,
+		Key:    &key,
+		Body:   bytes.NewReader(changed),
+	})
+	require.NoError(t, err, "PutObject should succeed")
+
+	// Get if unmodified should success
+	_, err = client.GetObject(t.Context(), &s3.GetObjectInput{
+		Bucket:            &bucket,
+		Key:               &key,
+		IfUnmodifiedSince: getResp.LastModified,
+	})
+	assertS3Error(t, err, "PreconditionFailed", http.StatusPreconditionFailed)
 }
 
 func TestHeadObjectIfMatchNonExistent(t *testing.T) {

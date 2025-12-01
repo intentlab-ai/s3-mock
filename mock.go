@@ -554,7 +554,9 @@ func (f *fakeS3) handlePutObject(w http.ResponseWriter, r *http.Request, bucket,
 	}
 
 	etag := computeETag(body)
-	now := time.Now().UTC()
+
+	// truncate to seconds so the comparisons for modified-since work
+	now := time.Now().UTC().Truncate(time.Second)
 
 	objects[key] = object{
 		Body:           body,
@@ -721,6 +723,8 @@ func checkConditionalRequest(w http.ResponseWriter, r *http.Request, bucket stri
 	// See: https://docs.aws.amazon.com/AmazonS3/latest/API/API_GetObject.html
 	ifMatch := strings.Trim(r.Header.Get("If-Match"), `"`)
 	ifNoneMatch := strings.Trim(r.Header.Get("If-None-Match"), `"`)
+	ifModifiedSince := strings.Trim(r.Header.Get("If-Modified-Since"), `"`)
+	ifUnmodifiedSince := strings.Trim(r.Header.Get("If-Unmodified-Since"), `"`)
 
 	// If-Match: Return object only if ETag matches, otherwise 412
 	if ifMatch != "" && ifMatch != obj.ETag {
@@ -739,6 +743,54 @@ func checkConditionalRequest(w http.ResponseWriter, r *http.Request, bucket stri
 		w.Header().Set("ETag", quote(obj.ETag))
 		w.WriteHeader(http.StatusNotModified)
 		return false
+	}
+
+	if ifUnmodifiedSince != "" {
+		since, err := time.Parse(http.TimeFormat, ifUnmodifiedSince)
+		if err != nil {
+			writeS3Error(
+				w,
+				"InvalidRequest",
+				"invalid time format for 'if-unmodified-since' header",
+				"/"+bucket+"/"+key,
+				http.StatusBadRequest,
+			)
+			return false
+		}
+
+		if obj.ModTime.After(since) {
+			writeS3Error(
+				w,
+				"PreconditionFailed",
+				"At least one of the pre-conditions you specified did not hold",
+				"/"+bucket+"/"+key, http.StatusPreconditionFailed,
+			)
+			return false
+		}
+	}
+
+	if ifModifiedSince != "" {
+		since, err := time.Parse(http.TimeFormat, ifModifiedSince)
+		if err != nil {
+			writeS3Error(
+				w,
+				"InvalidRequest",
+				"invalid time format for 'if-modified-since' header",
+				"/"+bucket+"/"+key,
+				http.StatusBadRequest,
+			)
+			return false
+		}
+
+		if !obj.ModTime.After(since) {
+			writeS3Error(
+				w,
+				"PreconditionFailed",
+				"At least one of the pre-conditions you specified did not hold",
+				"/"+bucket+"/"+key, http.StatusNotModified,
+			)
+			return false
+		}
 	}
 
 	return true
