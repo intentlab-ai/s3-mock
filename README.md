@@ -63,7 +63,7 @@ The following table documents the current implementation status of S3 API operat
 | `HeadBucket` | ❌ Not Implemented | - |
 | **Object Operations** |
 | `PutObject` | ✅ Implemented | Supports conditional headers (If-Match, If-None-Match), SHA256 checksum storage |
-| `GetObject` | ✅ Implemented | Supports conditional headers (If-Match, If-None-Match) |
+| `GetObject` | ✅ Implemented | Supports conditional headers (If-Match, If-None-Match, if-,modified, if-unmodified) |
 | `HeadObject` | ✅ Implemented | Returns object metadata without body |
 | `DeleteObject` | ✅ Implemented | Supports conditional headers (If-Match) |
 | `CopyObject` | ❌ Not Implemented | - |
