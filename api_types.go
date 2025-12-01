@@ -1,4 +1,4 @@
-package mock
+package s3mock
 
 // ErrorResponse represents an S3 error response in XML format.
 type ErrorResponse struct {

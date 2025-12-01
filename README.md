@@ -22,7 +22,7 @@ go get github.com/grafana/s3-mock
 import "github.com/grafana/s3-mock"
 
 // Create a mock S3 client
-client, closeFn, err := mock.New()
+client, closeFn, err := s3mock.New()
 if err != nil {
     // handle error
 }

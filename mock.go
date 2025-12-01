@@ -1,5 +1,5 @@
-// Package mock provides a simple in-memory S3 mock server for testing.
-package mock
+// Package s3mock provides a simple in-memory S3 mock server for testing.
+package s3mock
 
 import (
 	"context"
