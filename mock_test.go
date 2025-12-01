@@ -181,7 +181,7 @@ func TestGetIfNoneMatch(t *testing.T) {
 		IfNoneMatch: aws.String(`"different-etag"`),
 	})
 	require.NoError(t, err, "GetObject with different If-None-Match should succeed")
-	defer getResp.Body.Close()
+	defer getResp.Body.Close() //nolint:errcheck
 
 	body, err := io.ReadAll(getResp.Body)
 	require.NoError(t, err, "reading response body should succeed")
@@ -223,7 +223,7 @@ func TestGetIfMatch(t *testing.T) {
 		IfMatch: aws.String(eTag),
 	})
 	require.NoError(t, err, "GetObject with matching If-Match should succeed")
-	defer getResp.Body.Close()
+	defer getResp.Body.Close() //nolint:errcheck
 
 	// Get with If-Match with wrong ETag (should fail)
 	_, err = client.GetObject(t.Context(), &s3.GetObjectInput{
@@ -742,7 +742,7 @@ func TestGetObject(t *testing.T) {
 		Key:    &key,
 	})
 	require.NoError(t, err, "GetObject should succeed")
-	defer getResp.Body.Close()
+	defer getResp.Body.Close() //nolint:errcheck
 
 	// Verify content
 	body, err := io.ReadAll(getResp.Body)
@@ -1033,7 +1033,7 @@ func TestPutObject(t *testing.T) {
 		Key:    &key,
 	})
 	require.NoError(t, err, "GetObject should succeed")
-	defer getResp.Body.Close()
+	defer getResp.Body.Close() //nolint:errcheck
 
 	body, err := io.ReadAll(getResp.Body)
 	require.NoError(t, err, "reading response body should succeed")
