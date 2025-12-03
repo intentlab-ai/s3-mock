@@ -57,15 +57,15 @@ The following table documents the current implementation status of S3 API operat
 | Operation | Status | Notes |
 |-----------|--------|-------|
 | **Bucket Operations** |
-| `CreateBucket` | ✅ Implemented | Basic bucket creation with duplicate detection |
-| `DeleteBucket` | ✅ Implemented | Deletes empty buckets, returns BucketNotEmpty if bucket contains objects |
+| `CreateBucket` | ✅ Implemented | bucket configuration in the request body is ignored |
+| `DeleteBucket` | ✅ Implemented | |
 | `ListBuckets` | ✅  Implemented | Supports prefix, maxKeys, continuationToken, startAfter parameters |
 | `HeadBucket` | ❌ Not Implemented | - |
 | **Object Operations** |
 | `PutObject` | ✅ Implemented | Supports conditional headers (If-Match, If-None-Match), SHA256 checksum storage |
 | `GetObject` | ✅ Implemented | Supports conditional headers (If-Match, If-None-Match, if-,modified, if-unmodified) |
-| `HeadObject` | ✅ Implemented | Returns object metadata without body |
-| `DeleteObject` | ✅ Implemented | Supports conditional headers (If-Match) |
+| `HeadObject` | ✅ Implemented | Returns object metadata without body supports conditional headers |
+| `DeleteObject` | ✅ Implemented | Supports conditional headers (If-Match, If-None-Match, if-,modified, if-unmodified) |
 | `CopyObject` | ❌ Not Implemented | - |
 | `DeleteObjects` | ❌ Not Implemented | Batch delete operation |
 | `GetObjectAttributes` | ✅ Implemented | Supports ETag, ObjectSize, Checksum (SHA256), StorageClass |
