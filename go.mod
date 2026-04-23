@@ -1,4 +1,4 @@
-module github.com/grafana/s3-mock
+module github.com/intentlab-ai/s3-mock
 
 go 1.24.2
 
