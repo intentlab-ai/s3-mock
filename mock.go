@@ -32,6 +32,12 @@ type object struct {
 type fakeS3 struct {
 	mu      sync.Mutex
 	buckets map[string]map[string]object // bucket -> key -> object
+
+	// Disk persistence (zero-valued when not enabled).
+	persistDir string
+	retention  time.Duration
+	sweepStop  chan struct{}
+	sweepDone  chan struct{}
 }
 
 // New creates a new mock S3 client for testing.
@@ -475,6 +481,11 @@ func (f *fakeS3) handleCreateBucket(w http.ResponseWriter, _ *http.Request, buck
 	}
 
 	f.buckets[bucket] = make(map[string]object)
+	if err := f.persistCreateBucket(bucket); err != nil {
+		delete(f.buckets, bucket)
+		writeS3Error(w, "InternalError", "failed to persist bucket", "/"+bucket, http.StatusInternalServerError)
+		return
+	}
 	w.WriteHeader(http.StatusOK)
 }
 
@@ -558,11 +569,22 @@ func (f *fakeS3) handlePutObject(w http.ResponseWriter, r *http.Request, bucket,
 	// truncate to seconds so the comparisons for modified-since work
 	now := time.Now().UTC().Truncate(time.Second)
 
-	objects[key] = object{
+	newObj := object{
 		Body:           body,
 		ETag:           etag,
 		ModTime:        now,
 		ChecksumSHA256: checksumSHA256,
+	}
+	objects[key] = newObj
+	if err := f.persistPut(bucket, key, newObj); err != nil {
+		// Revert the in-memory write to stay consistent with disk.
+		if exists {
+			objects[key] = existing
+		} else {
+			delete(objects, key)
+		}
+		writeS3Error(w, "InternalError", "failed to persist object", "/"+bucket+"/"+key, http.StatusInternalServerError)
+		return
 	}
 
 	w.Header().Set("ETag", quote(etag))
@@ -824,6 +846,7 @@ func (f *fakeS3) handleDeleteBucket(w http.ResponseWriter, _ *http.Request, buck
 
 	// Delete the bucket
 	delete(f.buckets, bucket)
+	_ = f.persistDeleteBucket(bucket)
 	w.WriteHeader(http.StatusNoContent)
 }
 
@@ -865,5 +888,6 @@ func (f *fakeS3) handleDeleteObject(w http.ResponseWriter, r *http.Request, buck
 	}
 
 	delete(objects, key)
+	_ = f.persistDelete(bucket, key)
 	w.WriteHeader(http.StatusNoContent)
 }
