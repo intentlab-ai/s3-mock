@@ -30,7 +30,11 @@ type object struct {
 }
 
 type fakeS3 struct {
-	mu      sync.Mutex
+	// Read handlers (Get/Head/List/GetObjectAttributes/ListBuckets) take
+	// mu.RLock(); write handlers (Put/Delete/CreateBucket/DeleteBucket) and
+	// the retention sweeper take mu.Lock(). Parallel reads can proceed
+	// concurrently; writes exclude both readers and other writers.
+	mu      sync.RWMutex
 	buckets map[string]map[string]object // bucket -> key -> object
 
 	// Disk persistence (zero-valued when not enabled).
@@ -185,8 +189,8 @@ func (f *fakeS3) handleListObjects(w http.ResponseWriter, r *http.Request, bucke
 		return
 	}
 
-	f.mu.Lock()
-	defer f.mu.Unlock()
+	f.mu.RLock()
+	defer f.mu.RUnlock()
 
 	objects, bucketExists := f.buckets[bucket]
 	if !bucketExists {
@@ -254,8 +258,8 @@ func (f *fakeS3) handleListObjects(w http.ResponseWriter, r *http.Request, bucke
 // handleListObjectsV2 returns a list of objects in the bucket as XML
 // https://docs.aws.amazon.com/AmazonS3/latest/API/API_ListObjectsV2.html
 func (f *fakeS3) handleListObjectsV2(w http.ResponseWriter, r *http.Request, bucket string) {
-	f.mu.Lock()
-	defer f.mu.Unlock()
+	f.mu.RLock()
+	defer f.mu.RUnlock()
 
 	objects, bucketExists := f.buckets[bucket]
 	if !bucketExists {
@@ -322,8 +326,8 @@ func (f *fakeS3) handleListObjectsV2(w http.ResponseWriter, r *http.Request, buc
 
 // handleListBuckets returns a list of all buckets as XML (ListBuckets)
 func (f *fakeS3) handleListBuckets(w http.ResponseWriter, r *http.Request) {
-	f.mu.Lock()
-	defer f.mu.Unlock()
+	f.mu.RLock()
+	defer f.mu.RUnlock()
 
 	bucketNames := make([]string, 0, len(f.buckets))
 	for bucketName := range f.buckets {
@@ -595,8 +599,8 @@ func (f *fakeS3) handlePutObject(w http.ResponseWriter, r *http.Request, bucket,
 // returns objects attributes in headers
 // https://docs.aws.amazon.com/AmazonS3/latest/API/API_HeadObject.html
 func (f *fakeS3) handleHeadObject(w http.ResponseWriter, r *http.Request, bucket, key string) {
-	f.mu.Lock()
-	defer f.mu.Unlock()
+	f.mu.RLock()
+	defer f.mu.RUnlock()
 
 	objects, bucketExists := f.buckets[bucket]
 	if !bucketExists {
@@ -634,8 +638,8 @@ func (f *fakeS3) handleGetObject(w http.ResponseWriter, r *http.Request, bucket,
 		return
 	}
 
-	f.mu.Lock()
-	defer f.mu.Unlock()
+	f.mu.RLock()
+	defer f.mu.RUnlock()
 
 	objects, bucketExists := f.buckets[bucket]
 	if !bucketExists {
@@ -675,8 +679,8 @@ func (f *fakeS3) handleGetObject(w http.ResponseWriter, r *http.Request, bucket,
 // returns object attributes
 // https://docs.aws.amazon.com/AmazonS3/latest/API/API_GetObjectAttributes.html
 func (f *fakeS3) handleGetObjectAttributes(w http.ResponseWriter, r *http.Request, bucket, key string) {
-	f.mu.Lock()
-	defer f.mu.Unlock()
+	f.mu.RLock()
+	defer f.mu.RUnlock()
 
 	objects, bucketExists := f.buckets[bucket]
 	if !bucketExists {
