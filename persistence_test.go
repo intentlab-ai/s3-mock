@@ -3,8 +3,10 @@ package s3mock
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"io"
 	"os"
+	"sync"
 	"testing"
 	"time"
 
@@ -121,6 +123,68 @@ func TestPersistence_RetentionSweep(t *testing.T) {
 	binPath, metaPath := fake.objectPaths(bucket, "stale.txt")
 	require.NoFileExists(t, binPath)
 	require.NoFileExists(t, metaPath)
+}
+
+// TestConcurrentReads exercises the RWMutex path: many parallel GetObjects
+// against a populated bucket must all succeed and return the right bodies.
+// Correctness check under -race; any regression to a plain Mutex would
+// still pass but the perf benefit (parallel reads) would be gone.
+func TestConcurrentReads(t *testing.T) {
+	ctx := context.Background()
+	client, closeFn, err := NewWithOptions()
+	require.NoError(t, err)
+	defer closeFn(ctx)
+
+	const bucket = "b"
+	_, err = client.CreateBucket(ctx, &s3.CreateBucketInput{Bucket: aws.String(bucket)})
+	require.NoError(t, err)
+
+	const n = 100
+	for i := 0; i < n; i++ {
+		key := fmt.Sprintf("k/%04d", i)
+		_, err := client.PutObject(ctx, &s3.PutObjectInput{
+			Bucket: aws.String(bucket),
+			Key:    aws.String(key),
+			Body:   bytes.NewReader([]byte(key)),
+		})
+		require.NoError(t, err)
+	}
+
+	const readers = 16
+	var wg sync.WaitGroup
+	errs := make(chan error, readers*n)
+	for w := 0; w < readers; w++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for i := 0; i < n; i++ {
+				key := fmt.Sprintf("k/%04d", i)
+				out, err := client.GetObject(ctx, &s3.GetObjectInput{
+					Bucket: aws.String(bucket),
+					Key:    aws.String(key),
+				})
+				if err != nil {
+					errs <- err
+					return
+				}
+				body, err := io.ReadAll(out.Body)
+				out.Body.Close()
+				if err != nil {
+					errs <- err
+					return
+				}
+				if string(body) != key {
+					errs <- fmt.Errorf("key %s: body=%q", key, body)
+					return
+				}
+			}
+		}()
+	}
+	wg.Wait()
+	close(errs)
+	for err := range errs {
+		t.Error(err)
+	}
 }
 
 // TestPersistence_InMemoryDefault asserts that NewWithOptions() with no
