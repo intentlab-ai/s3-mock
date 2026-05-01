@@ -276,6 +276,7 @@ func (f *fakeS3) handleListObjectsV2(w http.ResponseWriter, r *http.Request, buc
 	query := r.URL.Query()
 
 	prefix := query.Get("prefix")
+	delimiter := query.Get("delimiter")
 	maxKeys := 1000 // default
 	if maxKeysStr := query.Get("max-keys"); maxKeysStr != "" {
 		if parsed, err := strconv.Atoi(maxKeysStr); err == nil && parsed > 0 {
@@ -294,29 +295,68 @@ func (f *fakeS3) handleListObjectsV2(w http.ResponseWriter, r *http.Request, buc
 		maxKeys,
 	)
 
-	var contents []Contents
-	for _, key := range keys {
-		obj := objects[key]
-		contents = append(contents, Contents{
-			Key:          key,
-			LastModified: obj.ModTime.UTC().Format(time.RFC3339),
-			ETag:         quote(obj.ETag),
-			Size:         int64(len(obj.Body)),
-			StorageClass: "STANDARD",
+	var (
+		contents       []Contents
+		commonPrefixes []CommonPrefix
+	)
+	if delimiter != "" {
+		// AWS behaviour: keys whose suffix-after-prefix contains the
+		// delimiter collapse into a single CommonPrefix entry; keys
+		// without the delimiter are returned as Contents. Order of
+		// CommonPrefixes follows lexicographic order of the prefix.
+		seen := map[string]struct{}{}
+		for _, key := range keys {
+			rest := key
+			if prefix != "" {
+				rest = strings.TrimPrefix(key, prefix)
+			}
+			if i := strings.Index(rest, delimiter); i >= 0 {
+				cp := prefix + rest[:i+len(delimiter)]
+				if _, ok := seen[cp]; ok {
+					continue
+				}
+				seen[cp] = struct{}{}
+				commonPrefixes = append(commonPrefixes, CommonPrefix{Prefix: cp})
+				continue
+			}
+			obj := objects[key]
+			contents = append(contents, Contents{
+				Key:          key,
+				LastModified: obj.ModTime.UTC().Format(time.RFC3339),
+				ETag:         quote(obj.ETag),
+				Size:         int64(len(obj.Body)),
+				StorageClass: "STANDARD",
+			})
+		}
+		sort.Slice(commonPrefixes, func(i, j int) bool {
+			return commonPrefixes[i].Prefix < commonPrefixes[j].Prefix
 		})
+	} else {
+		for _, key := range keys {
+			obj := objects[key]
+			contents = append(contents, Contents{
+				Key:          key,
+				LastModified: obj.ModTime.UTC().Format(time.RFC3339),
+				ETag:         quote(obj.ETag),
+				Size:         int64(len(obj.Body)),
+				StorageClass: "STANDARD",
+			})
+		}
 	}
 
 	result := ListBucketResult{
 		XMLNS:                 "http://s3.amazonaws.com/doc/2006-03-01/",
 		Name:                  bucket,
 		Prefix:                prefix,
+		Delimiter:             delimiter,
 		MaxKeys:               maxKeys,
 		IsTruncated:           isTruncated,
 		ContinuationToken:     continuationToken,
 		NextContinuationToken: nextToken,
 		StartAfter:            startAfter,
-		KeyCount:              len(contents),
+		KeyCount:              len(contents) + len(commonPrefixes),
 		Contents:              contents,
+		CommonPrefixes:        commonPrefixes,
 	}
 
 	w.Header().Set("Content-Type", "application/xml")

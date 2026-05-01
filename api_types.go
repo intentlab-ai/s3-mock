@@ -51,32 +51,43 @@ type ContentsV1 struct {
 	Owner        *Owner `xml:"Owner"`
 }
 
+// CommonPrefix is one of the grouped prefixes returned when ListObjects
+// is called with a delimiter — keys that share a delimiter-bounded
+// prefix collapse into a single entry, mirroring AWS's behaviour.
+type CommonPrefix struct {
+	Prefix string `xml:"Prefix"`
+}
+
 // ListBucketResult represents the response for ListObjectsV2 operation.
 type ListBucketResult struct {
-	XMLName               struct{}   `xml:"ListBucketResult"`
-	XMLNS                 string     `xml:"xmlns,attr"`
-	Name                  string     `xml:"Name"`
-	Prefix                string     `xml:"Prefix,omitempty"`
-	MaxKeys               int        `xml:"MaxKeys"`
-	IsTruncated           bool       `xml:"IsTruncated"`
-	ContinuationToken     string     `xml:"ContinuationToken,omitempty"`
-	NextContinuationToken string     `xml:"NextContinuationToken,omitempty"`
-	StartAfter            string     `xml:"StartAfter,omitempty"`
-	KeyCount              int        `xml:"KeyCount"`
-	Contents              []Contents `xml:"Contents"`
+	XMLName               struct{}       `xml:"ListBucketResult"`
+	XMLNS                 string         `xml:"xmlns,attr"`
+	Name                  string         `xml:"Name"`
+	Prefix                string         `xml:"Prefix,omitempty"`
+	Delimiter             string         `xml:"Delimiter,omitempty"`
+	MaxKeys               int            `xml:"MaxKeys"`
+	IsTruncated           bool           `xml:"IsTruncated"`
+	ContinuationToken     string         `xml:"ContinuationToken,omitempty"`
+	NextContinuationToken string         `xml:"NextContinuationToken,omitempty"`
+	StartAfter            string         `xml:"StartAfter,omitempty"`
+	KeyCount              int            `xml:"KeyCount"`
+	Contents              []Contents     `xml:"Contents"`
+	CommonPrefixes        []CommonPrefix `xml:"CommonPrefixes"`
 }
 
 // ListBucketResultV1 represents the response for ListObjects v1 operation.
 type ListBucketResultV1 struct {
-	XMLName     struct{}     `xml:"ListBucketResult"`
-	XMLNS       string       `xml:"xmlns,attr"`
-	Name        string       `xml:"Name"`
-	Prefix      string       `xml:"Prefix,omitempty"`
-	Marker      string       `xml:"Marker,omitempty"`
-	MaxKeys     int          `xml:"MaxKeys"`
-	IsTruncated bool         `xml:"IsTruncated"`
-	NextMarker  string       `xml:"NextMarker,omitempty"`
-	Contents    []ContentsV1 `xml:"Contents"`
+	XMLName        struct{}       `xml:"ListBucketResult"`
+	XMLNS          string         `xml:"xmlns,attr"`
+	Name           string         `xml:"Name"`
+	Prefix         string         `xml:"Prefix,omitempty"`
+	Marker         string         `xml:"Marker,omitempty"`
+	Delimiter      string         `xml:"Delimiter,omitempty"`
+	MaxKeys        int            `xml:"MaxKeys"`
+	IsTruncated    bool           `xml:"IsTruncated"`
+	NextMarker     string         `xml:"NextMarker,omitempty"`
+	Contents       []ContentsV1   `xml:"Contents"`
+	CommonPrefixes []CommonPrefix `xml:"CommonPrefixes"`
 }
 
 // Bucket represents a bucket entry in ListAllMyBucketsResult response.
