@@ -1,0 +1,35 @@
+name: code-graph
+
+# Calls the reusable workflow in intentlab-ai/capability-registry,
+# which runs code-analyzer against the CKB cloud tier on every PR /
+# push and posts findings as a PR comment. Default enforcement is
+# warn-only — nothing fails CI in v1.
+#
+# Opt out by creating .github/no-code-graph on this repo's default
+# branch (the org-wide rollout script will skip future updates).
+
+on:
+  pull_request:
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - '.github/**'
+      - '**/*.lock'
+      - '**/lockfiles/**'
+  push:
+    branches: [main]
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - '.github/**'
+      - '**/*.lock'
+      - '**/lockfiles/**'
+
+jobs:
+  analyze:
+    uses: intentlab-ai/capability-registry/.github/workflows/analyze.yml@main
+    permissions:
+      contents: read
+      id-token: write
+      pull-requests: write
+    secrets: inherit
