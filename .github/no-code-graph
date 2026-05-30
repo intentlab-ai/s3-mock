@@ -1,0 +1,2 @@
+# Opt-out marker for intentlab-ai/code-analyzer.
+# See scripts/bootstrap.py and scripts/rollout_analyze_main.py.
