@@ -36,7 +36,7 @@ func TestPersistence_RoundTrip(t *testing.T) {
 	require.NoError(t, err)
 
 	for key, body := range fixtures {
-		_, err := client1.PutObject(ctx, &s3.PutObjectInput{
+		_, err = client1.PutObject(ctx, &s3.PutObjectInput{
 			Bucket: aws.String(bucket),
 			Key:    aws.String(key),
 			Body:   bytes.NewReader(body),

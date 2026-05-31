@@ -197,17 +197,17 @@ func writeAtomic(path string, data []byte) error {
 	}
 	tmpPath := tmp.Name()
 	if _, err := tmp.Write(data); err != nil {
-		tmp.Close()
-		os.Remove(tmpPath)
+		_ = tmp.Close()
+		_ = os.Remove(tmpPath)
 		return err
 	}
 	if err := tmp.Sync(); err != nil {
-		tmp.Close()
-		os.Remove(tmpPath)
+		_ = tmp.Close()
+		_ = os.Remove(tmpPath)
 		return err
 	}
 	if err := tmp.Close(); err != nil {
-		os.Remove(tmpPath)
+		_ = os.Remove(tmpPath)
 		return err
 	}
 	return os.Rename(tmpPath, path)
@@ -246,7 +246,7 @@ func (f *fakeS3) loadFromDisk() error {
 				continue
 			}
 			var meta objectMeta
-			if err := json.Unmarshal(metaData, &meta); err != nil {
+			if err = json.Unmarshal(metaData, &meta); err != nil {
 				continue
 			}
 			binPath := metaPath[:len(metaPath)-len(".meta.json")] + ".bin"
@@ -308,4 +308,3 @@ func (f *fakeS3) sweepOnce() {
 // Sweep triggers a single sweep pass synchronously. Exposed for tests that
 // need deterministic reaping rather than waiting for the ticker.
 func (f *fakeS3) Sweep() { f.sweepOnce() }
-
