@@ -1,0 +1,24 @@
+name: E2E
+
+# Per-PR E2E gate. `scenarios-required` is the single required PR gate (org
+# CI-gate policy: exactly one `*-required` gate per file). Documented NO-OP
+# placeholder: s3-mock has no PR-scoped e2e suite. The gate exists so the repo
+# exposes the same two required contexts as every other repo.
+
+on:
+  pull_request:
+  merge_group:
+
+permissions:
+  contents: read
+
+jobs:
+  scenarios-required:
+    name: scenarios-required
+    runs-on: ubuntu-latest
+    steps:
+      - name: Placeholder — no per-PR e2e yet
+        run: |
+          echo "scenarios-required: documented no-op placeholder (passes)."
+          echo "s3-mock has no PR-scoped e2e suite; this gate keeps the two required"
+          echo "contexts (checks-required + scenarios-required) uniform across repos."
