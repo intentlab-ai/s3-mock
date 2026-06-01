@@ -1,0 +1,26 @@
+# Advances code-analyzer's persisted main snapshot (main_ptr) after every
+# merge or direct push to main, by calling the org code-analyzer
+# reusable workflow with target_repo set to this repo.
+#
+# Without this wrapper, the org Ruleset's required-workflow injection only
+# covers PR open/sync/reopen events, leaving main_ptr frozen.
+#
+# Managed by code-analyzer/scripts/rollout_analyze_main.py. Edit the
+# template there, not this file — re-rollout overwrites local changes.
+name: Code Analyzer
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+  id-token: write
+  pull-requests: write
+
+jobs:
+  analyze-main:
+    uses: intentlab-ai/code-analyzer/.github/workflows/analyze.yml@main
+    with:
+      target_repo: ${{ github.repository }}
+    secrets: inherit
