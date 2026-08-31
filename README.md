@@ -39,7 +39,7 @@ defer closeFn(context.Background())
 
 ## API Coverage
 
-The mock implement common API methods for creating, retrieving and deleting buckets and objects. It supports regular and directory buckets (multi-part object keys, e.g. '/path/to/object').
+The mock implements common API methods for creating, retrieving and deleting buckets and objects. It supports regular and directory buckets (multi-part object keys, e.g. '/path/to/object').
 
 Important implementation gaps:
 - versioned buckets
@@ -85,4 +85,3 @@ The following table documents the current implementation status of S3 API operat
 ## License
 
 See LICENSE file for details.
-
